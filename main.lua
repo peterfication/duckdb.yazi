@@ -25,6 +25,21 @@ local function get_opts(key)
 	return update_state("get", "opts", key)
 end
 
+local modes = { "standard", "summarized", "code"}
+
+local function mode_next()
+	local current_mode = get_opts("mode")
+
+	local idx = 1
+	for i, m in ipairs(modes) do
+		if m == current_mode then idx = i break end
+	end
+
+	local new_mode = modes[(idx % #modes) + 1]
+
+	return new_mode
+end
+
 local function add_to_list(category, cache_str)
 	update_state("set", category, cache_str, true)
 end
@@ -751,7 +766,7 @@ end
 -- Peek with mode toggle if scrolling at top
 function M:peek(job)
 	local args = prepare_peek_context(job)
-	if is_plain_text(job, args.file_type) then
+	if is_plain_text(job, args.file_type) or args.mode == "code" then
 		return require("code"):peek(job)
 	end
 
@@ -791,10 +806,7 @@ function M:seek(job)
 	local new_skip = current_skip + units
 
 	if new_skip < 0 then
-		-- Toggle preview mode
-		local mode = get_opts("mode")
-		local new_mode = (mode == "summarized") and "standard" or "summarized"
-		set_opts("mode", new_mode)
+		set_opts("mode", mode_next())
 		set_opts("mode_changed", true)
 		-- Trigger re-peek
 		ya.emit("peek", { OFFSET_BASE, only_if = job.file.url })
